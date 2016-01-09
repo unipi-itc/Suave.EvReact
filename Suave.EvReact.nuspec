@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+    <metadata>
+        <id>Suave.EvReact</id>
+        <version>0.1.0</version>
+        <title>Suave.EvReact</title>
+        <authors>Antonio Cisternino</authors>
+        <projectUrl>https://unipi-itc.github.io/Suave.EvReact</projectUrl>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <description>Transform URL requests into events orchestrated by EvReact.</description>
+        <dependencies>
+            <group targetFramework=".NETFramework4.0">
+                <dependency id="Suave" version="1.0.0" />
+                <dependency id="evReact" version="0.9.0" />
+            </group>
+        </dependencies>
+    </metadata>
+    <files>
+        <file src="bin\Release\Suave.EvReact.dll" target="lib\net40" />
+        <file src="bin\Release\Suave.EvReact.dll.config" target="lib\net40" />
+    </files>
+</package>
