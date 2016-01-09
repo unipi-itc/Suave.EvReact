@@ -1,7 +1,7 @@
 ﻿#I __SOURCE_DIRECTORY__
 
-#r @"..\packages\Suave.1.0.0\lib\net40\Suave.dll"
-#r @"..\packages\evReact.0.9.0\lib\evReact.dll"
+#r @"packages\Suave.1.0.0\lib\net40\Suave.dll"
+#r @"packages\evReact.0.9.0\lib\evReact.dll"
 
 #load "Suave.EvReact.fs"
 open Suave.EvReact
