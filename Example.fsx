@@ -31,12 +31,12 @@ let jobs = ResizeArray<string>()
 // In this example we have jobs that are started by accessing /start/id
 // You perform some work only if the job is running with /work/id/arg
 // You stop the job using /stop/id
-let app = chooseEvents 
+let app = choose 
             [
-                ("/start/(\\d+)", start, NO_CONTENT)
-                ("/work/(\\d+)/(\\d+)", work, NO_CONTENT)
-                ("/stop/(\\d+)", stop, NO_CONTENT)
-                ("/status", status, NO_CONTENT)
+                http_react("/start/(\\d+)", start, NO_CONTENT)
+                http_react("/work/(\\d+)/(\\d+)", work, NO_CONTENT)
+                http_react("/stop/(\\d+)", stop, NO_CONTENT)
+                http_react("/status", status, NO_CONTENT)
             ]
 
 // This EvReact net simply react to the status event by printing the list of jobs
