@@ -23,16 +23,18 @@ module EvReact =
 
     type HttpEventBind = string*HttpEvent*WebPart
 
+    let http_react (evt : HttpEventBind) =
+      let pat, e, def = evt 
+      fun (h:HttpContext) ->
+        let m = Regex.Match(h.request.url.AbsolutePath, pat)
+        if m.Success then
+          let evt = HttpEventArgs(h, pat, m, def)
+          e.Trigger(evt)
+          evt.Result(h)
+        else
+          fail
+
     let chooseEvents (evts:HttpEventBind list) : WebPart =
         evts 
-        |> List.map (fun (pat, e, def) -> 
-                        fun (h:HttpContext) ->
-                            let m = Regex.Match(h.request.url.AbsolutePath, pat)
-                            if m.Success then
-                                let evt = HttpEventArgs(h, pat, m, def)
-                                e.Trigger(evt)
-                                evt.Result(h)
-                            else
-                                fail
-                    ) 
+        |> List.map http_react 
         |> choose
