@@ -4,7 +4,9 @@ module EvReact =
     open Suave
     open Suave.Sscanf
     open Suave.Http
+    open Suave.Operators
     open Suave.EventSource
+    open Suave.Filters
     open System.Text.RegularExpressions
     open Newtonsoft.Json.Linq
 
@@ -50,9 +52,25 @@ module EvReact =
         else
           fail
 
+    let contentType (t:string) (arg:HttpContext) =
+      async {
+        match arg.request.header("content-type") with
+        | Choice1Of2 v ->
+          if v = t then
+            return Some arg
+          else
+            return None
+        | Choice2Of2 v ->
+          return None
+      }
+
     let json_react (evt : JsonEventBind) =
       let pat, e, def = evt 
-      fun (h:HttpContext) ->
+      POST
+      >=>
+      contentType "application/json"
+      >=>
+      (fun (h:HttpContext) ->
         async {
           let m = Regex.Match(h.request.url.AbsolutePath, pat)
           if m.Success then
@@ -65,19 +83,7 @@ module EvReact =
             with _ -> return None
           else
             return! fail
-        }
-
-    let contentType (t:string) (arg:HttpContext) =
-      async {
-        match arg.request.header("content-type") with
-        | Choice1Of2 v ->
-          if v = t then
-            return Some arg
-          else
-            return None
-        | Choice2Of2 v ->
-          return None
-      }
+        })
 
     let chooseEvents (evts:HttpEventBind list) : WebPart =
         evts 
