@@ -50,7 +50,7 @@ module EvReact =
         let m = Regex.Match(h.request.url.AbsolutePath, pat)
         if m.Success then
           let evt = HttpEventArgs(h, pat, m, def)
-          e.Trigger(evt)
+          async { e.Trigger(evt) } |> Async.Start |> ignore
           evt.Result(h)
         else
           fail
@@ -81,7 +81,7 @@ module EvReact =
             try 
               let o = JToken.Parse(txt)
               let evt = JsonEventArgs(h, o, pat, m, def)
-              e.Trigger(evt)
+              async { e.Trigger(evt) } |> Async.Start |> ignore
               return! evt.Result h
             with _ -> return None
           else
