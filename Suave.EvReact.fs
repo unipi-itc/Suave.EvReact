@@ -7,18 +7,27 @@ module EvReact =
     open Suave.Operators
     open Suave.EventSource
     open Suave.Filters
+    open System.Threading
     open System.Text.RegularExpressions
     open Newtonsoft.Json.Linq
 
     type HttpEventArgs(h:HttpContext, path:string, m:Match, def:WebPart) =
         inherit System.EventArgs()
 
-        let mutable result : WebPart = def
+        let mutable result : Option<WebPart> = None
+        let waitHandle = new EventWaitHandle(false, EventResetMode.ManualReset)
 
         member this.Context = h
         member this.Path = path
         member this.Match = m
-        member this.Result with get() = result and set(v) = result <- v
+        member this.Result with get()  = waitHandle.WaitOne() |> ignore
+                                         waitHandle.Dispose()
+                                         match result with None -> def | Some v -> v
+
+                            and set(v) = match result with
+                                         | None -> result <- Some v
+                                         | Some _ -> failwith "Result already set"
+                                         waitHandle.Set() |> ignore
 
         static member Empty = new HttpEventArgs(HttpContext.empty, null, null, never)
 
