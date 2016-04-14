@@ -23,15 +23,9 @@ module EvReact =
         static member Empty = new HttpEventArgs(HttpContext.empty, null, null, never)
 
     type JsonEventArgs(h:HttpContext, o:JToken, path:string, m:Match, def:WebPart) =
-        inherit System.EventArgs()
+        inherit HttpEventArgs(h, path, m, def)
 
-        let mutable result : WebPart = def
-
-        member this.Context = h
         member this.Object = o
-        member this.Path = path
-        member this.Match = m
-        member this.Result with get() = result and set(v) = result <- v
 
         static member Empty = new JsonEventArgs(HttpContext.empty, null, null, null, never)
 
