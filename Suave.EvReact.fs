@@ -11,7 +11,7 @@ module EvReact =
     open System.Text.RegularExpressions
     open Newtonsoft.Json.Linq
 
-    type HttpEventArgs(h:HttpContext, path:string, m:Match, def:WebPart) =
+    type HttpEventArgs (h:HttpContext, path:string, m:Match) =
         inherit System.EventArgs()
 
         let mutable result : Option<WebPart> = None
@@ -22,34 +22,32 @@ module EvReact =
         member this.Match = m
         member this.Result with get()  = waitHandle.WaitOne() |> ignore
                                          waitHandle.Dispose()
-                                         match result with None -> def | Some v -> v
+                                         match result with
+                                         | None -> Suave.ServerErrors.INTERNAL_ERROR "Inconsistent internal state"
+                                         | Some v -> v
 
                             and set(v) = match result with
                                          | None -> result <- Some v
                                          | Some _ -> failwith "Result already set"
                                          waitHandle.Set() |> ignore
 
-        static member Empty = new HttpEventArgs(HttpContext.empty, null, null, never)
-
-    type JsonEventArgs(h:HttpContext, o:JToken, path:string, m:Match, def:WebPart) =
-        inherit HttpEventArgs(h, path, m, def)
+    type JsonEventArgs (h:HttpContext, o:JToken, path:string, m:Match) =
+        inherit HttpEventArgs(h, path, m)
 
         member this.Object = o
-
-        static member Empty = new JsonEventArgs(HttpContext.empty, null, null, null, never)
 
     type HttpEvent = EvReact.Event<HttpEventArgs>
     type JsonEvent = EvReact.Event<JsonEventArgs>
 
-    type HttpEventBind = string*HttpEvent*WebPart
-    type JsonEventBind = string*JsonEvent*WebPart
+    type HttpEventBind = string*HttpEvent
+    type JsonEventBind = string*JsonEvent
 
     let http_react (evt : HttpEventBind) =
-      let pat, e, def = evt 
+      let pat, e = evt
       fun (h:HttpContext) ->
         let m = Regex.Match(h.request.url.AbsolutePath, pat)
         if m.Success then
-          let evt = HttpEventArgs(h, pat, m, def)
+          let evt = HttpEventArgs(h, pat, m)
           async { e.Trigger(evt) } |> Async.Start |> ignore
           evt.Result(h)
         else
@@ -68,7 +66,7 @@ module EvReact =
       }
 
     let json_react (evt : JsonEventBind) =
-      let pat, e, def = evt 
+      let pat, e = evt
       POST
       >=>
       contentType "application/json"
@@ -80,7 +78,7 @@ module EvReact =
             let txt = System.Text.Encoding.ASCII.GetString(h.request.rawForm)
             try 
               let o = JToken.Parse(txt)
-              let evt = JsonEventArgs(h, o, pat, m, def)
+              let evt = JsonEventArgs(h, o, pat, m)
               async { e.Trigger(evt) } |> Async.Start |> ignore
               return! evt.Result h
             with _ -> return None
