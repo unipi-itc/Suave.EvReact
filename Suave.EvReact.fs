@@ -81,3 +81,34 @@ module EvReact =
 
     let chooseEvents (evts : HttpEventBind list) =
       evts |> List.map http_react |> choose
+
+
+    let serializeJSON x =
+      let json = Newtonsoft.Json.JsonConvert.SerializeObject(x)
+      System.Text.Encoding.UTF8.GetBytes(json)
+
+    let deserializeJSON data =
+      let json = System.Text.Encoding.UTF8.GetString(data)
+      Newtonsoft.Json.JsonConvert.DeserializeObject<_>(json)
+
+    let defaultSendJson uri data =
+      let client = new System.Net.WebClient()
+      client.Headers.[System.Net.HttpRequestHeader.ContentType] <- "application/json"
+      client.UploadDataAsync(uri, data)
+
+    let createRemoteTrigger sendJson =
+      serializeJSON >> sendJson : _ -> unit
+
+    let createRemoteIEvent () =
+      let e = EvReact.Event()
+      let handleJson ctx =
+        try
+          let x = deserializeJSON(ctx.request.rawForm)
+          asyncTrigger e x
+          Successful.OK "" ctx
+        with _ -> RequestErrors.BAD_REQUEST "Malformed data" ctx
+      let webpart =
+        POST
+        >=> contentType "application/json"
+        >=> handleJson
+      webpart,e.Publish

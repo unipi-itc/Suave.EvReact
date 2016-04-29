@@ -30,3 +30,7 @@ namespace Suave
     val json_react : JsonEventBind -> WebPart
 
     val chooseEvents : HttpEventBind list -> WebPart
+
+    val defaultSendJson : Uri -> byte[] -> unit
+    val createRemoteTrigger : (byte[] -> unit) -> ('T -> unit)
+    val createRemoteIEvent : unit -> WebPart * IEvent<'T>
