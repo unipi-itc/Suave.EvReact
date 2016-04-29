@@ -42,16 +42,14 @@ module EvReact =
     type HttpEventBind = string*HttpEvent
     type JsonEventBind = string*JsonEvent
 
-    let http_react (evt : HttpEventBind) =
-      let pat, e = evt
-      fun (h:HttpContext) ->
-        let m = Regex.Match(h.request.url.AbsolutePath, pat)
-        if m.Success then
-          let evt = HttpEventArgs(h, pat, m)
-          async { e.Trigger(evt) } |> Async.Start |> ignore
-          evt.Result(h)
-        else
-          fail
+
+    let makeJsonEventArgs (ctx, pat, m) =
+      let txt = System.Text.Encoding.ASCII.GetString(ctx.request.rawForm)
+      let o = JToken.Parse(txt)
+      JsonEventArgs(ctx, o, pat, m)
+
+    let asyncTrigger (e:EvReact.Event<_>) args =
+      async { e.Trigger(args) } |> Async.Start |> ignore
 
 
     let contentType t =
@@ -61,28 +59,25 @@ module EvReact =
         else
           fail
 
-    let json_react (evt : JsonEventBind) =
-      let pat, e = evt
-      POST
-      >=>
-      contentType "application/json"
-      >=>
-      (fun (h:HttpContext) ->
-        async {
-          let m = Regex.Match(h.request.url.AbsolutePath, pat)
-          if m.Success then
-            let txt = System.Text.Encoding.ASCII.GetString(h.request.rawForm)
-            try 
-              let o = JToken.Parse(txt)
-              let evt = JsonEventArgs(h, o, pat, m)
-              async { e.Trigger(evt) } |> Async.Start |> ignore
-              return! evt.Result h
-            with _ -> return None
-          else
-            return! fail
-        })
+    let webapi_react makeArgs pat evt =
+      fun ctx ->
+        let m = Regex.Match(ctx.request.url.AbsolutePath, pat)
+        if m.Success then
+          try
+            let args : #HttpEventArgs = makeArgs (ctx, pat, m)
+            asyncTrigger evt args
+            args.Result ctx
+          with _ -> RequestErrors.BAD_REQUEST "Malformed data" ctx
+        else
+          RequestErrors.FORBIDDEN "" ctx
 
-    let chooseEvents (evts:HttpEventBind list) : WebPart =
-        evts 
-        |> List.map http_react 
-        |> choose
+    let http_react (pat,evt) =
+      webapi_react HttpEventArgs pat evt
+
+    let json_react (pat,evt) =
+      POST
+      >=> contentType "application/json"
+      >=> webapi_react makeJsonEventArgs pat evt
+
+    let chooseEvents (evts : HttpEventBind list) =
+      evts |> List.map http_react |> choose
