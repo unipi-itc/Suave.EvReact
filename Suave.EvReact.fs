@@ -53,17 +53,13 @@ module EvReact =
         else
           fail
 
-    let contentType (t:string) (arg:HttpContext) =
-      async {
-        match arg.request.header("content-type") with
-        | Choice1Of2 v ->
-          if v = t then
-            return Some arg
-          else
-            return None
-        | Choice2Of2 v ->
-          return None
-      }
+
+    let contentType t =
+      fun ctx ->
+        if ctx.request.header("content-type") = Choice1Of2(t) then
+          succeed ctx
+        else
+          fail
 
     let json_react (evt : JsonEventBind) =
       let pat, e = evt
