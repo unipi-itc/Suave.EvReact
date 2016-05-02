@@ -42,51 +42,73 @@ module EvReact =
     type HttpEventBind = string*HttpEvent
     type JsonEventBind = string*JsonEvent
 
-    let http_react (evt : HttpEventBind) =
-      let pat, e = evt
-      fun (h:HttpContext) ->
-        let m = Regex.Match(h.request.url.AbsolutePath, pat)
-        if m.Success then
-          let evt = HttpEventArgs(h, pat, m)
-          async { e.Trigger(evt) } |> Async.Start |> ignore
-          evt.Result(h)
+
+    let makeJsonEventArgs (ctx, pat, m) =
+      let txt = System.Text.Encoding.ASCII.GetString(ctx.request.rawForm)
+      let o = JToken.Parse(txt)
+      JsonEventArgs(ctx, o, pat, m)
+
+    let asyncTrigger (e:EvReact.Event<_>) args =
+      async { e.Trigger(args) } |> Async.Start |> ignore
+
+
+    let contentType t =
+      fun ctx ->
+        if ctx.request.header("content-type") = Choice1Of2(t) then
+          succeed ctx
         else
           fail
 
-    let contentType (t:string) (arg:HttpContext) =
-      async {
-        match arg.request.header("content-type") with
-        | Choice1Of2 v ->
-          if v = t then
-            return Some arg
-          else
-            return None
-        | Choice2Of2 v ->
-          return None
-      }
+    let webapi_react makeArgs pat evt =
+      fun ctx ->
+        let m = Regex.Match(ctx.request.url.AbsolutePath, pat)
+        if m.Success then
+          try
+            let args : #HttpEventArgs = makeArgs (ctx, pat, m)
+            asyncTrigger evt args
+            args.Result ctx
+          with _ -> RequestErrors.BAD_REQUEST "Malformed data" ctx
+        else
+          RequestErrors.FORBIDDEN "" ctx
 
-    let json_react (evt : JsonEventBind) =
-      let pat, e = evt
+    let http_react (pat,evt) =
+      webapi_react HttpEventArgs pat evt
+
+    let json_react (pat,evt) =
       POST
-      >=>
-      contentType "application/json"
-      >=>
-      (fun (h:HttpContext) ->
-        async {
-          let m = Regex.Match(h.request.url.AbsolutePath, pat)
-          if m.Success then
-            let txt = System.Text.Encoding.ASCII.GetString(h.request.rawForm)
-            try 
-              let o = JToken.Parse(txt)
-              let evt = JsonEventArgs(h, o, pat, m)
-              async { e.Trigger(evt) } |> Async.Start |> ignore
-              return! evt.Result h
-            with _ -> return None
-          else
-            return! fail
-        })
+      >=> contentType "application/json"
+      >=> webapi_react makeJsonEventArgs pat evt
 
-    let chooseEvents (evts:HttpEventBind list) : WebPart =
-        evts 
-        |> List.map http_react 
-        |> choose
+    let chooseEvents (evts : HttpEventBind list) =
+      evts |> List.map http_react |> choose
+
+
+    let serializeJSON x =
+      let json = Newtonsoft.Json.JsonConvert.SerializeObject(x)
+      System.Text.Encoding.UTF8.GetBytes(json)
+
+    let deserializeJSON data =
+      let json = System.Text.Encoding.UTF8.GetString(data)
+      Newtonsoft.Json.JsonConvert.DeserializeObject<_>(json)
+
+    let defaultSendJson uri data =
+      let client = new System.Net.WebClient()
+      client.Headers.[System.Net.HttpRequestHeader.ContentType] <- "application/json"
+      client.UploadDataAsync(uri, data)
+
+    let createRemoteTrigger sendJson =
+      serializeJSON >> sendJson : _ -> unit
+
+    let createRemoteIEvent () =
+      let e = EvReact.Event()
+      let handleJson ctx =
+        try
+          let x = deserializeJSON(ctx.request.rawForm)
+          asyncTrigger e x
+          Successful.OK "" ctx
+        with _ -> RequestErrors.BAD_REQUEST "Malformed data" ctx
+      let webpart =
+        POST
+        >=> contentType "application/json"
+        >=> handleJson
+      webpart,e.Publish

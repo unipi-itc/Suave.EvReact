@@ -51,6 +51,7 @@
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Suave.EvReact.fsi" />
     <Compile Include="Suave.EvReact.fs" />
     <None Include="Example.fsx" />
     <Content Include="packages.config" />
