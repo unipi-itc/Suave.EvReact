@@ -69,7 +69,7 @@ module EvReact =
             args.Result ctx
           with _ -> RequestErrors.BAD_REQUEST "Malformed data" ctx
         else
-          RequestErrors.FORBIDDEN "" ctx
+          async.Return(None)
 
     let http_react (pat,evt) =
       webapi_react HttpEventArgs pat evt
