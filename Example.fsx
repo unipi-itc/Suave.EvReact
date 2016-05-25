@@ -1,7 +1,8 @@
 ﻿#I __SOURCE_DIRECTORY__
 
-#r @"packages\Suave.1.0.0\lib\net40\Suave.dll"
-#r @"packages\evReact.0.9.0\lib\evReact.dll"
+#r @"packages/Suave.1.0.0/lib/net40/Suave.dll"
+#r @"packages/evReact.0.9.0/lib/evReact.dll"
+#r @"packages/Newtonsoft.Json.8.0.2/lib/net40/Newtonsoft.Json.dll"
 
 #load "Suave.EvReact.fs"
 open Suave.EvReact
@@ -33,10 +34,10 @@ let jobs = ResizeArray<string>()
 // You stop the job using /stop/id
 let app = choose 
             [
-                http_react("/start/(\\d+)", start, NO_CONTENT)
-                http_react("/work/(\\d+)/(\\d+)", work, NO_CONTENT)
-                http_react("/stop/(\\d+)", stop, NO_CONTENT)
-                http_react("/status", status, NO_CONTENT)
+                http_react("/start/(\\d+)", start)
+                http_react("/work/(\\d+)/(\\d+)", work)
+                http_react("/stop/(\\d+)", stop)
+                http_react("/status", status)
             ]
 
 // This EvReact net simply react to the status event by printing the list of jobs
@@ -71,18 +72,18 @@ let startNet = !!start.Publish |-> (fun arg ->
                                  stopNet.Trigger(arg)
                      )
   // Start a net listening for the stop event
-  Expr.start HttpEventArgs.Empty orch stopThis |> ignore
+  Expr.start Unchecked.defaultof<_> orch stopThis |> ignore
 
   // Net looping forever unless the stopNet event fires
   let net = (loopUntil [|stopNet.Publish|] doWork)
 
   // Starts the net
-  Expr.start HttpEventArgs.Empty orch net |> ignore
+  Expr.start Unchecked.defaultof<_> orch net |> ignore
 )
 
 // Starts the startNet and statusReq nets looping forever
-Expr.start HttpEventArgs.Empty orch (+startNet)
-Expr.start HttpEventArgs.Empty orch (+statusReq)
+Expr.start Unchecked.defaultof<_> orch (+startNet)
+Expr.start Unchecked.defaultof<_> orch (+statusReq)
   
 // Starts Suave
 startWebServer defaultConfig app
