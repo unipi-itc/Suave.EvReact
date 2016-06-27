@@ -1,26 +1,18 @@
 namespace Suave
   module EvReact =
     open System
-    open Suave.Http
-    open System.Text.RegularExpressions
 
-    type HttpEventArgs =
+    type ResponseEventArgs =
       inherit EventArgs
-      internal new : HttpContext * string * Match -> HttpEventArgs
-      member Context : HttpContext
-      member Match : Match
-      member Path : string
+      internal new : unit -> ResponseEventArgs
       member Result : WebPart with get, set
 
-    type HttpEvent = EvReact.Event<HttpEventArgs>
+    type HttpEventArgs =
+      inherit ResponseEventArgs
+      internal new : HttpContext -> HttpEventArgs
+      member Context : HttpContext
 
-    type HttpEventBind = string * HttpEvent
-
-    val contentType : string -> WebPart
-
-    val http_react : HttpEventBind -> WebPart
-
-    val chooseEvents : HttpEventBind list -> WebPart
+    val httpReact : unit -> WebPart * IEvent<HttpEventArgs>
 
     val defaultSendJson : Uri -> byte[] -> unit
     val createRemoteTrigger : (byte[] -> unit) -> ('T -> unit)
