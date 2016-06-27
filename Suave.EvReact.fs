@@ -9,7 +9,6 @@ module EvReact =
     open Suave.Filters
     open System.Threading
     open System.Text.RegularExpressions
-    open Newtonsoft.Json.Linq
 
     type HttpEventArgs (h:HttpContext, path:string, m:Match) =
         inherit System.EventArgs()
@@ -31,26 +30,11 @@ module EvReact =
                                          | Some _ -> failwith "Result already set"
                                          waitHandle.Set() |> ignore
 
-    type JsonEventArgs (h:HttpContext, o:JToken, path:string, m:Match) =
-        inherit HttpEventArgs(h, path, m)
-
-        member this.Object = o
-
     type HttpEvent = EvReact.Event<HttpEventArgs>
-    type JsonEvent = EvReact.Event<JsonEventArgs>
-
     type HttpEventBind = string*HttpEvent
-    type JsonEventBind = string*JsonEvent
-
-
-    let makeJsonEventArgs (ctx, pat, m) =
-      let txt = System.Text.Encoding.ASCII.GetString(ctx.request.rawForm)
-      let o = JToken.Parse(txt)
-      JsonEventArgs(ctx, o, pat, m)
 
     let asyncTrigger (e:EvReact.Event<_>) args =
       async { e.Trigger(args) } |> Async.Start |> ignore
-
 
     let contentType t =
       fun ctx ->
@@ -74,14 +58,8 @@ module EvReact =
     let http_react (pat,evt) =
       webapi_react HttpEventArgs pat evt
 
-    let json_react (pat,evt) =
-      POST
-      >=> contentType "application/json"
-      >=> webapi_react makeJsonEventArgs pat evt
-
     let chooseEvents (evts : HttpEventBind list) =
       evts |> List.map http_react |> choose
-
 
     let serializeJSON x =
       let json = Newtonsoft.Json.JsonConvert.SerializeObject(x)
