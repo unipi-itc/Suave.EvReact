@@ -24,6 +24,15 @@ module EvReact =
                                        | Some _ -> failwith "Result already set"
                                        waitHandle.Set() |> ignore
 
+    type MsgContext(u: System.Uri, src: Suave.Sockets.SocketBinding) =
+      member this.Uri = u
+      member this.Source = src
+
+    type MsgRequestEventArgs<'T>(ctxt: MsgContext, m : 'T) =
+      inherit ResponseEventArgs()
+      member this.Context = ctxt
+      member this.Message = m
+
     type HttpEventArgs(h:HttpContext) =
         inherit ResponseEventArgs()
         member this.Context = h
@@ -64,16 +73,30 @@ module EvReact =
         args.Result ctx
       webpart,e.Publish
 
-    let createRemoteIEvent () =
-      let e = EvReact.Event()
-      let handleJson ctx =
+    let handleJson (handler: _ -> WebPart) : WebPart =
+      fun ctx ->
         try
           let x = deserializeJSON(ctx.request.rawForm)
-          asyncTrigger e x
-          Successful.OK "" ctx
-        with _ -> RequestErrors.BAD_REQUEST "Malformed data" ctx
-      let webpart =
-        POST
-        >=> contentType "application/json"
-        >=> handleJson
-      webpart,e.Publish
+          handler x ctx
+        with _ -> fail
+
+    let jsonReact handle =
+      POST <|> RequestErrors.METHOD_NOT_ALLOWED "POST is the only accepted method"
+      >=> contentType "application/json" <|> RequestErrors.BAD_REQUEST "Invalid content type"
+      >=> handleJson handle <|> RequestErrors.BAD_REQUEST "Malformed data"
+
+    let msgReact () =
+      let e = EvReact.Event()
+      let handle x ctx =
+        let msgCtx = MsgContext(ctx.request.url, ctx.connection.socketBinding)
+        let args = MsgRequestEventArgs(msgCtx, x)
+        asyncTrigger e args
+        args.Result ctx
+      (jsonReact handle, e.Publish)
+
+    let createRemoteIEvent () =
+      let e = EvReact.Event()
+      let handle x =
+        asyncTrigger e x
+        Successful. OK ""
+      (jsonReact handle, e.Publish)
