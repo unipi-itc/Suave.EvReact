@@ -37,7 +37,7 @@ module EvReact =
         inherit ResponseEventArgs()
         member this.Context = h
 
-    let asyncTrigger (e:EvReact.Event<_>) args =
+    let asyncTrigger (e:Event<_>) args =
       async { e.Trigger(args) } |> Async.Start |> ignore
 
     let contentType t =
@@ -64,7 +64,7 @@ module EvReact =
       serializeJSON >> sendJson : _ -> unit
 
     let httpReact () =
-      let e = EvReact.Event()
+      let e = Event<_>()
       let webpart ctx =
         let args = HttpEventArgs(ctx)
         asyncTrigger e args
@@ -84,7 +84,7 @@ module EvReact =
       >=> handleJson handle <|> RequestErrors.BAD_REQUEST "Malformed data"
 
     let msgReact () =
-      let e = EvReact.Event()
+      let e = Event<_>()
       let handle x ctx =
         let msgCtx = MsgContext(ctx.request.url, ctx.connection.socketBinding)
         let args = MsgRequestEventArgs(msgCtx, x)
@@ -93,7 +93,7 @@ module EvReact =
       (jsonReact handle, e.Publish)
 
     let createRemoteIEvent () =
-      let e = EvReact.Event()
+      let e = Event<_>()
       let handle x =
         asyncTrigger e x
         Successful. OK ""
