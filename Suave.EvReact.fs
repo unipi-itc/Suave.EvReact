@@ -37,8 +37,6 @@ module EvReact =
         inherit ResponseEventArgs()
         member this.Context = h
 
-    type HttpEvent = EvReact.Event<HttpEventArgs>
-
     let asyncTrigger (e:EvReact.Event<_>) args =
       async { e.Trigger(args) } |> Async.Start |> ignore
 
