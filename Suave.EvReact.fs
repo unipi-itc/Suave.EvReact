@@ -79,9 +79,9 @@ module EvReact =
         with _ -> fail
 
     let jsonReact handle =
-      POST <|> RequestErrors.METHOD_NOT_ALLOWED "POST is the only accepted method"
-      >=> contentType "application/json" <|> RequestErrors.BAD_REQUEST "Invalid content type"
-      >=> handleJson handle <|> RequestErrors.BAD_REQUEST "Malformed data"
+      let hj = handleJson handle <|> RequestErrors.BAD_REQUEST "Malformed data"
+      let ct = contentType "application/json" >=> hj <|> RequestErrors.BAD_REQUEST "Invalid content type"
+      POST >=> ct <|> RequestErrors.METHOD_NOT_ALLOWED "POST is the only accepted method"
 
     let msgResponse msTimeout =
       let e = Event<_>()
