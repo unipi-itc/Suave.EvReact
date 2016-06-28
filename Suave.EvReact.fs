@@ -8,12 +8,12 @@ module EvReact =
     open Suave.Filters
     open System.Threading
 
-    type ResponseEventArgs() =
+    type ResponseEventArgs(msTimeout) =
       inherit System.EventArgs()
       let mutable result : Option<WebPart> = None
       let waitHandle = new EventWaitHandle(false, EventResetMode.ManualReset)
 
-      member this.Result with get()  = waitHandle.WaitOne() |> ignore
+      member this.Result with get()  = waitHandle.WaitOne(defaultArg msTimeout Timeout.Infinite) |> ignore
                                        waitHandle.Dispose()
                                        match result with
                                        | None -> ServerErrors.INTERNAL_ERROR "Inconsistent internal state"
@@ -28,13 +28,13 @@ module EvReact =
       member this.Uri = u
       member this.Source = src
 
-    type MsgRequestEventArgs<'T>(ctxt: MsgContext, m : 'T) =
-      inherit ResponseEventArgs()
+    type MsgRequestEventArgs<'T>(ctxt: MsgContext, m : 'T, msTimeout) =
+      inherit ResponseEventArgs(msTimeout)
       member this.Context = ctxt
       member this.Message = m
 
-    type HttpEventArgs(h:HttpContext) =
-        inherit ResponseEventArgs()
+    type HttpEventArgs(h:HttpContext, msTimeout) =
+        inherit ResponseEventArgs(msTimeout)
         member this.Context = h
 
     let asyncTrigger (e:Event<_>) args =
@@ -63,10 +63,10 @@ module EvReact =
     let createRemoteTrigger sendJson =
       serializeJSON >> sendJson : _ -> unit
 
-    let httpReact () =
+    let httpResponse msTimeout =
       let e = Event<_>()
       let webpart ctx =
-        let args = HttpEventArgs(ctx)
+        let args = HttpEventArgs(ctx, msTimeout)
         asyncTrigger e args
         args.Result ctx
       webpart,e.Publish
@@ -83,13 +83,21 @@ module EvReact =
       >=> contentType "application/json" <|> RequestErrors.BAD_REQUEST "Invalid content type"
       >=> handleJson handle <|> RequestErrors.BAD_REQUEST "Malformed data"
 
+    let msgResponse msTimeout =
+      let e = Event<_>()
+      let handle x ctx =
+        let msgCtx = MsgContext(ctx.request.url, ctx.connection.socketBinding)
+        let args = MsgRequestEventArgs(msgCtx, x, msTimeout)
+        asyncTrigger e args
+        args.Result ctx
+      (jsonReact handle, e.Publish)
+
     let msgReact () =
       let e = Event<_>()
       let handle x ctx =
         let msgCtx = MsgContext(ctx.request.url, ctx.connection.socketBinding)
-        let args = MsgRequestEventArgs(msgCtx, x)
-        asyncTrigger e args
-        args.Result ctx
+        asyncTrigger e (msgCtx, x)
+        Successful.OK "" ctx
       (jsonReact handle, e.Publish)
 
     let createRemoteIEvent () =

@@ -4,12 +4,12 @@ namespace Suave
 
     type ResponseEventArgs =
       inherit EventArgs
-      internal new : unit -> ResponseEventArgs
+      internal new : int option -> ResponseEventArgs
       member Result : WebPart with get, set
 
     type HttpEventArgs =
       inherit ResponseEventArgs
-      internal new : HttpContext -> HttpEventArgs
+      internal new : HttpContext * int option -> HttpEventArgs
       member Context : HttpContext
 
     type MsgContext =
@@ -19,12 +19,13 @@ namespace Suave
 
     type MsgRequestEventArgs<'T> =
       inherit ResponseEventArgs
-      internal new : MsgContext * 'T -> MsgRequestEventArgs<'T>
+      internal new : MsgContext * 'T * int option -> MsgRequestEventArgs<'T>
       member Context : MsgContext
       member Message : 'T
 
-    val httpReact : unit -> WebPart * IEvent<HttpEventArgs>
-    val msgReact : unit -> WebPart * IEvent<MsgRequestEventArgs<'T>>
+    val httpResponse : int option -> WebPart * IEvent<HttpEventArgs>
+    val msgResponse : int option -> WebPart * IEvent<MsgRequestEventArgs<'T>>
+    val msgReact : unit -> WebPart * IEvent<MsgContext * 'T>
 
     val defaultSendJson : Uri -> byte[] -> unit
     val createRemoteTrigger : (byte[] -> unit) -> ('T -> unit)
