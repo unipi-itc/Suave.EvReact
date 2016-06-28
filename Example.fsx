@@ -1,8 +1,8 @@
 ﻿#I __SOURCE_DIRECTORY__
 
-#r @"packages/Suave.1.0.0/lib/net40/Suave.dll"
-#r @"packages/evReact.0.9.0/lib/evReact.dll"
-#r @"packages/Newtonsoft.Json.8.0.2/lib/net40/Newtonsoft.Json.dll"
+#r @"packages/Suave.1.1.3/lib/net40/Suave.dll"
+#r @"packages/Newtonsoft.Json.9.0.1/lib/net40/Newtonsoft.Json.dll"
+#r "evreact.dll"
 
 #load "Suave.EvReact.fs"
 open Suave.EvReact
@@ -11,15 +11,28 @@ open Suave
 open Suave.Http
 open Suave.Successful
 open Suave.Web
-open Suave.EvReact
+open Suave.Operators
+open System.Text.RegularExpressions
+
 open EvReact
 open EvReact.Expr
 
+let regex (pattern:string) (arg:HttpContext) =
+    async {
+      if Regex.IsMatch(arg.request.url.AbsolutePath, pattern) then
+        return Some arg
+      else
+        return None
+    }
+
+let rexm (pattern:string) (ctx:HttpEventArgs) =
+  Regex.Match(ctx.Context.request.url.AbsolutePath, pattern)
+
 // Create the EvReact events associated with URLs
-let start = HttpEvent()
-let work = HttpEvent()
-let stop = HttpEvent()
-let status = HttpEvent()
+let startp, (startwp, start) = "/start/(\\d+)", httpResponse(Some 1000)
+let workp, (workwp, work) = "/work/(\\d+)/(\\d+)", httpResponse(Some 1000)
+let stopp, (stopwp, stop) = "/stop/(\\d+)", httpResponse(Some 1000)
+let statusp, (statuswp, status) = "/status", httpResponse(Some 1000)
 
 let jobs = ResizeArray<string>()
 
@@ -34,14 +47,14 @@ let jobs = ResizeArray<string>()
 // You stop the job using /stop/id
 let app = choose 
             [
-                http_react("/start/(\\d+)", start)
-                http_react("/work/(\\d+)/(\\d+)", work)
-                http_react("/stop/(\\d+)", stop)
-                http_react("/status", status)
+                regex startp >=> startwp
+                regex workp >=> workwp
+                regex stopp >=> stopwp
+                regex statusp >=> statuswp
             ]
 
 // This EvReact net simply react to the status event by printing the list of jobs
-let statusReq = !!status.Publish |-> (fun arg -> arg.Result <- OK (System.String.Join("<br/>", jobs)))
+let statusReq = !!status |-> (fun arg -> arg.Result <- OK (System.String.Join("<br/>", jobs)))
 
 // Useful net generator expressing a loop until
 let loopUntil terminator body = +( body / terminator ) - never
@@ -50,23 +63,25 @@ let loopUntil terminator body = +( body / terminator ) - never
 let orch = EvReact.Orchestrator.create()
 
 // When start is received the function gets triggered
-let startNet = !!start.Publish |-> (fun arg ->
+let startNet = !!start |-> (fun arg ->
+  let m = rexm startp arg
   // Read the id from the argument
-  let id = arg.Match.Groups.[1].Value
+  let id = m.Groups.[1].Value
   jobs.Add(id)
 
   // Set the response
   arg.Result <- OK (sprintf "Started job %s" id)
   
   // The net performing the actual work is triggered only if the id is the one started
-  let doWork = (work.Publish %- (fun arg -> arg.Match.Groups.[1].Value = id)) |-> (fun arg ->
-    let value = int(arg.Match.Groups.[2].Value)
+  let doWork = (work %- (fun arg -> let m = rexm workp arg in m.Groups.[1].Value = id)) |-> (fun arg ->
+    let m = rexm workp arg
+    let value = int(m.Groups.[2].Value)
     arg.Result <- OK ((value + 1).ToString())
   )
   
   // We get the stop event and only if relates to the current id trigger the stopNet event
-  let stopNet = HttpEvent()
-  let stopThis = (stop.Publish %- (fun arg -> arg.Match.Groups.[1].Value = id))
+  let stopNet = Event.create<HttpEventArgs>("stopNet")
+  let stopThis = (stop %- (fun arg -> let m = rexm stopp arg in m.Groups.[1].Value = id))
                  |-> (fun arg -> arg.Result <- OK(sprintf "Job %s done" id)
                                  jobs.Remove(id) |> ignore 
                                  stopNet.Trigger(arg)
