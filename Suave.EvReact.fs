@@ -57,10 +57,10 @@ module EvReact =
       let json = System.Text.Encoding.UTF8.GetString(data)
       Newtonsoft.Json.JsonConvert.DeserializeObject<_>(json)
 
-    let defaultSendJson uri data =
+    let defaultSendJson (uri: System.Uri) data =
       let client = new System.Net.WebClient()
       client.Headers.[System.Net.HttpRequestHeader.ContentType] <- "application/json"
-      client.UploadDataAsync(uri, data)
+      client.UploadData(uri, data) |> ignore
 
     let createRemoteTrigger sendJson =
       serializeJSON >> sendJson : _ -> unit
