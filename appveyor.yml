@@ -2,4 +2,6 @@ configuration:
  - Debug
  - Release
 before_build:
- - ps: nuget restore
+ ps: nuget restore
+build:
+ project: Suave.EvReact.sln
