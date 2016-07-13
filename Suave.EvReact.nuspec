@@ -7,7 +7,7 @@
         <authors>Antonio Cisternino, Andrea Canciani</authors>
         <projectUrl>https://unipi-itc.github.io/Suave.EvReact</projectUrl>
         <requireLicenseAcceptance>false</requireLicenseAcceptance>
-        <description>Transform URL requests into events orchestrated by EvReact. Look to http://fssnip.net/tL for an example.</description>
+        <description>Transform URL requests into IEvent triggers. Visit https://unipi-itc.github.io/Suave.EvReact for examples and documentation.</description>
         <dependencies>
             <group targetFramework=".NETFramework4.5">
                 <dependency id="Suave" version="1.1.3" />
