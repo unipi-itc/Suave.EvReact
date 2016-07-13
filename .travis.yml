@@ -1,0 +1,16 @@
+sudo: false
+language: csharp
+solution: Suave.EvReact.sln
+mono:
+  - nightly
+  - latest
+  - 3.12.0
+env:
+  - CFG=Debug
+  - CFG=Release
+script:
+  - xbuild /p:Configuration=$CFG Suave.EvReact.sln
+matrix:
+  allow_failures:
+    - mono: nightly
+    - mono: latest
