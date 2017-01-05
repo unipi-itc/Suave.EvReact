@@ -1,7 +1,10 @@
 module Suave.EvReact {
     interface Callback { (data: any): void; }
 
-    export function remoteCallback(url: string, callback: Callback, rawText?: boolean): Callback {
+    export function remoteCallback(url: string,
+                              callback: Callback,
+                              rawText?: boolean,
+                              onerror?: Callback): Callback {
         return data => {
             const request = new XMLHttpRequest();
             request.open('POST', url, true);
@@ -14,7 +17,7 @@ module Suave.EvReact {
                     callback(arg);
                 }
             };
-            request.onerror = () => console.error(url, request.status, request.statusText);
+            request.onerror = () => { if (onerror) onerror(request) };
             request.send(JSON.stringify(data));
         };
     }

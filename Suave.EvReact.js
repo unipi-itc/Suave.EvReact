@@ -2,7 +2,7 @@ var Suave;
 (function (Suave) {
     var EvReact;
     (function (EvReact) {
-        function remoteCallback(url, callback, rawText) {
+        function remoteCallback(url, callback, rawText, onerror) {
             return function (data) {
                 var request = new XMLHttpRequest();
                 request.open('POST', url, true);
@@ -15,7 +15,8 @@ var Suave;
                         callback(arg);
                     }
                 };
-                request.onerror = function () { return console.error(url, request.status, request.statusText); };
+                request.onerror = function () { if (onerror)
+                    onerror(request); };
                 request.send(JSON.stringify(data));
             };
         }
