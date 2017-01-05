@@ -2,15 +2,15 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
     <metadata>
         <id>Suave.EvReact</id>
-        <version>0.5.1</version>
+        <version>0.6.0</version>
         <title>Suave.EvReact</title>
         <authors>Antonio Cisternino, Andrea Canciani</authors>
         <projectUrl>https://unipi-itc.github.io/Suave.EvReact</projectUrl>
         <requireLicenseAcceptance>false</requireLicenseAcceptance>
         <description>Transform URL requests into IEvent triggers. Visit https://unipi-itc.github.io/Suave.EvReact for examples and documentation.</description>
         <dependencies>
-            <group targetFramework=".NETFramework4.5">
-                <dependency id="Suave" version="1.1.3" />
+            <group targetFramework="net461">
+                <dependency id="Suave" version="2.0.0" />
                 <dependency id="Newtonsoft.Json" version="9.0.1" />
             </group>
         </dependencies>

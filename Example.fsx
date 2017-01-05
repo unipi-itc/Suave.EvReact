@@ -1,8 +1,8 @@
 ﻿#I __SOURCE_DIRECTORY__
 
-#r @"packages/Suave.1.1.3/lib/net40/Suave.dll"
+#r @"packages/Suave.2.0.0/lib/net40/Suave.dll"
 #r @"packages/Newtonsoft.Json.9.0.1/lib/net40/Newtonsoft.Json.dll"
-#r "evreact.dll"
+#r "evReact.dll"
 
 #load "Suave.EvReact.fs"
 open Suave.EvReact
@@ -36,25 +36,37 @@ let statusp, (statuswp, status) = "/status", httpResponse(Some 1000)
 
 let jobs = ResizeArray<string>()
 
-// chooseEvents is the only combiner currently featured by Suave.EvReact
-// The list is (regex, event, default)
-// Whenever the regex is matched by Suave the event is fired. 
-// The default web part can be overridden by assigining the Result property
-// in the event
+type FooRec = { Foo: string; Bar: int[]; Baz: option<FooRec> }
+
+let es,trigger = createJsonEventSource "exampleES"
+
+async {
+  while true do
+    trigger { Foo = "hello";
+              Bar = [| 42; 1; 2; 3 |]
+              Baz = Some { Foo = "world"; Bar = [||]; Baz = None }
+            }
+    System.Threading.Thread.Sleep(1000)
+} |> Async.Start
+
+let fullPath = System.IO.Path.GetFullPath("static")
 
 // In this example we have jobs that are started by accessing /start/id
 // You perform some work only if the job is running with /work/id/arg
 // You stop the job using /stop/id
-let app = choose 
+let app = choose
             [
                 regex startp >=> startwp
                 regex workp >=> workwp
                 regex stopp >=> stopwp
                 regex statusp >=> statuswp
+                Filters.path "/events" >=> es
+                Filters.GET >=> Files.browse fullPath //serves file if exists
+                Filters.GET >=> Files.dir fullPath //show directory listing
             ]
 
 // This EvReact net simply react to the status event by printing the list of jobs
-let statusReq = !!status |-> (fun arg -> arg.Result <- OK (System.String.Join("<br/>", jobs)))
+let statusReq = !!status |-> (fun (arg:HttpEventArgs) -> arg.Result <- OK (System.String.Join("<br/>", jobs)))
 
 // Useful net generator expressing a loop until
 let loopUntil terminator body = +( body / terminator ) - never
@@ -81,10 +93,11 @@ let startNet = !!start |-> (fun arg ->
   
   // We get the stop event and only if relates to the current id trigger the stopNet event
   let stopNet = Event.create<HttpEventArgs>("stopNet")
-  let stopThis = (stop %- (fun arg -> let m = rexm stopp arg in m.Groups.[1].Value = id))
-                 |-> (fun arg -> arg.Result <- OK(sprintf "Job %s done" id)
-                                 jobs.Remove(id) |> ignore 
-                                 stopNet.Trigger(arg)
+  let stopThis = (stop %- (fun _ -> let m = rexm stopp arg in m.Groups.[1].Value = id))
+                 |-> (fun (arg:HttpEventArgs) ->
+                        jobs.Remove(id) |> ignore
+                        stopNet.Trigger(arg)
+                        arg.Result <- OK(sprintf "Job %s done" id)
                      )
   // Start a net listening for the stop event
   Expr.start Unchecked.defaultof<_> orch stopThis |> ignore
