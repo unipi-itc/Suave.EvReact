@@ -1,7 +1,7 @@
 ﻿
 #I __SOURCE_DIRECTORY__
 
-#r @"packages/Suave.1.1.3/lib/net40/Suave.dll"
+#r @"packages/Suave.2.0.0/lib/net40/Suave.dll"
 #r @"packages/Newtonsoft.Json.9.0.1/lib/net40/Newtonsoft.Json.dll"
 
 #load "Suave.EvReact.fs"
