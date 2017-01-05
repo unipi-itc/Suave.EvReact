@@ -2,7 +2,7 @@
 
 #r @"packages/Suave.2.0.0/lib/net40/Suave.dll"
 #r @"packages/Newtonsoft.Json.9.0.1/lib/net40/Newtonsoft.Json.dll"
-#r "evreact.dll"
+#r "evReact.dll"
 
 #load "Suave.EvReact.fs"
 open Suave.EvReact
