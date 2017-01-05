@@ -30,3 +30,6 @@ namespace Suave
     val defaultSendJson : Uri -> byte[] -> unit
     val createRemoteTrigger : (byte[] -> unit) -> ('T -> unit)
     val createRemoteIEvent : unit -> WebPart * IEvent<'T>
+
+    val createEventSource : string -> WebPart * (string -> unit)
+    val createJsonEventSource : string -> WebPart * ('T -> unit)

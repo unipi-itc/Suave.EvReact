@@ -4,6 +4,7 @@ module EvReact =
     open Suave
     open Suave.Http
     open Suave.Operators
+    open Suave.Sockets.Control
     open Suave.EventSource
     open Suave.Filters
     open System.Threading
@@ -106,3 +107,23 @@ module EvReact =
         asyncTrigger e x
         Successful. OK ""
       (jsonReact handle, e.Publish)
+
+    let createEventSource (evType: string) =
+      let e = Event<_>()
+      let evType = match evType with null -> None | s -> Some s
+      let ie = e.Publish
+      let sendEvent conn = socket {
+        let mutable i = 0
+        while true do
+          let! data = Async.AwaitEvent ie |> Sockets.SocketOp.ofAsync
+          let msg = { id = string i; data = data; ``type`` = evType }
+          do! EventSource.send conn msg
+          i <- i + 1
+        return conn
+      }
+      let es = request (fun _ -> EventSource.handShake sendEvent)
+      es,e.Trigger
+
+    let createJsonEventSource evType =
+      let wp,f = createEventSource evType
+      (wp, Newtonsoft.Json.JsonConvert.SerializeObject >> f)
