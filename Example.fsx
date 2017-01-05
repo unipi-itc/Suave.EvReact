@@ -36,21 +36,33 @@ let statusp, (statuswp, status) = "/status", httpResponse(Some 1000)
 
 let jobs = ResizeArray<string>()
 
-// chooseEvents is the only combiner currently featured by Suave.EvReact
-// The list is (regex, event, default)
-// Whenever the regex is matched by Suave the event is fired. 
-// The default web part can be overridden by assigining the Result property
-// in the event
+type FooRec = { Foo: string; Bar: int[]; Baz: option<FooRec> }
+
+let es,trigger = createJsonEventSource "exampleES"
+
+async {
+  while true do
+    trigger { Foo = "hello";
+              Bar = [| 42; 1; 2; 3 |]
+              Baz = Some { Foo = "world"; Bar = [||]; Baz = None }
+            }
+    System.Threading.Thread.Sleep(1000)
+} |> Async.Start
+
+let fullPath = System.IO.Path.GetFullPath("static")
 
 // In this example we have jobs that are started by accessing /start/id
 // You perform some work only if the job is running with /work/id/arg
 // You stop the job using /stop/id
-let app = choose 
+let app = choose
             [
                 regex startp >=> startwp
                 regex workp >=> workwp
                 regex stopp >=> stopwp
                 regex statusp >=> statuswp
+                Filters.path "/events" >=> es
+                Filters.GET >=> Files.browse fullPath //serves file if exists
+                Filters.GET >=> Files.dir fullPath //show directory listing
             ]
 
 // This EvReact net simply react to the status event by printing the list of jobs
