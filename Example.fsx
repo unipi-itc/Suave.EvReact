@@ -54,7 +54,7 @@ let app = choose
             ]
 
 // This EvReact net simply react to the status event by printing the list of jobs
-let statusReq = !!status |-> (fun arg -> arg.Result <- OK (System.String.Join("<br/>", jobs)))
+let statusReq = !!status |-> (fun (arg:HttpEventArgs) -> arg.Result <- OK (System.String.Join("<br/>", jobs)))
 
 // Useful net generator expressing a loop until
 let loopUntil terminator body = +( body / terminator ) - never
@@ -81,10 +81,11 @@ let startNet = !!start |-> (fun arg ->
   
   // We get the stop event and only if relates to the current id trigger the stopNet event
   let stopNet = Event.create<HttpEventArgs>("stopNet")
-  let stopThis = (stop %- (fun arg -> let m = rexm stopp arg in m.Groups.[1].Value = id))
-                 |-> (fun arg -> arg.Result <- OK(sprintf "Job %s done" id)
-                                 jobs.Remove(id) |> ignore 
-                                 stopNet.Trigger(arg)
+  let stopThis = (stop %- (fun _ -> let m = rexm stopp arg in m.Groups.[1].Value = id))
+                 |-> (fun (arg:HttpEventArgs) ->
+                        jobs.Remove(id) |> ignore
+                        stopNet.Trigger(arg)
+                        arg.Result <- OK(sprintf "Job %s done" id)
                      )
   // Start a net listening for the stop event
   Expr.start Unchecked.defaultof<_> orch stopThis |> ignore
